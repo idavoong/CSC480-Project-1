@@ -20,22 +20,14 @@ def find_start(grid):
                 return r, c
             
 
-def num_dirty(grid):
-    count = 0
-    for r in range(len(grid)):
-        for c in range(len(grid[r])):
-            if grid[r][c] == '*':
-                count += 1
-    return count
-            
-
-def dfs(cur, num_dirty, rows, cols, grid):
+def dfs(cur, rows, cols, grid, path=[]):
     row, col = cur[0], cur[1]
+    part_of_path = False
 
     if grid[row][col] == '*':
-        print("V")
-        num_dirty -= 1
-    
+        path.append("V")
+        part_of_path = True
+
     grid[row][col] = 'v' # v for visited
 
     neighbors = {
@@ -50,35 +42,56 @@ def dfs(cur, num_dirty, rows, cols, grid):
         c = neighbors[n][1]
         if 0 <= r < rows and 0 <= c < cols:
             if grid[r][c] != '#' and grid[r][c] != 'v':
-                print(n, r, c)
-                num_dirty = dfs(neighbors[n], num_dirty, rows, cols, grid)
-                if num_dirty:
-                    match n:
+                path.append(n)
+                part = dfs(neighbors[n], rows, cols, grid, path)
+                if part:
+                    part_of_path = True
+                    match n: # backtracking
                         case 'N':
-                            print('S')
+                            path.append('S')
                         case 'E':
-                            print('W')
+                            path.append('W')
                         case 'S':
-                            print('N')
+                            path.append('N')
                         case 'W':
-                            print('E')
+                            path.append('E')
+                else:
+                    path.pop()
 
-    return num_dirty
+    return part_of_path
+
+    
+
+
+def ucs(cur, num_dirty, rows, cols, grid):
+    pass
+    """
+    find cost of going from one dirty cell to another
+    find optimal path to clean all dirty cells 
+    using all possible combinations of dirty cells and start
+    """
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        print("Usage: python3 planner.py <algorithm> <world-file>")
-        # python3 planner.py depth-first example.txt
-        # python3 planner.py uniform-cost example.txt
-        sys.exit(1)
+    # if len(sys.argv) != 3:
+    #     print("Usage: python3 planner.py <algorithm> <world-file>")
+    #     # python3 planner.py depth-first example.txt
+    #     # python3 planner.py uniform-cost example.txt
+    #     sys.exit(1)
     
-    algorithm = sys.argv[1]
-    world_file = sys.argv[2]
+    # algorithm = sys.argv[1]
+    # world_file = sys.argv[2]
+
+    algorithm = "depth-first"
+    world_file = "example.txt"
 
     rows, cols, grid = read_file(world_file)
     start = find_start(grid)
-    dirty_count = num_dirty(grid)
+    path = []
 
-    if sys.argv[1] == "depth-first":
-        dfs(start, dirty_count, rows, cols, grid)
+    if algorithm == "depth-first":
+        dfs(start, rows, cols, grid, path)
+        while path[len(path) - 1] != "V":
+            path.pop()
+
+        print(path)

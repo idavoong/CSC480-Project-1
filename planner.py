@@ -1,6 +1,7 @@
 import sys
 import copy
 import heapq
+from itertools import permutations
 
 
 def read_file(file):
@@ -72,20 +73,32 @@ def dirty_coords(grid):
     return dirty
 
 
+def reverse_path(path):
+    temp = path[::-1] # reverse path
+    reversed_path = []
+
+    for p in temp: # flip directions
+        match p:
+            case 'N':
+                reversed_path.append('S')
+            case 'E':
+                reversed_path.append('W')
+            case 'S':
+                reversed_path.append('N')
+            case 'W':
+                reversed_path.append('E')
+    return reversed_path
+
+
 def start_to_end(start, end, grid):
     costs = copy.deepcopy(grid)
-    dist_to_end = abs(start[0] - end[0]) + abs(start[1] - end[1]) * -1 # negative for max heap
-    explore = [dist_to_end]
+    costs[start[0]][start[1]] = 0
+    explore = [start]
     heapq.heapify(explore)
 
     while len(explore) > 0:
         cur = heapq.heappop(explore)
         row, col = cur[0], cur[1]
-
-        if costs[row][col] == 'v':
-            continue
-
-        costs[row][col] = 'v'
 
         neighbors = {
             'N': (row - 1, col),
@@ -97,23 +110,59 @@ def start_to_end(start, end, grid):
         for n in neighbors.keys():
             r = neighbors[n][0]
             c = neighbors[n][1]
-            if 0 <= r < len(grid) and 0 <= c < len(grid[r]):
-                if grid[r][c] != '#' and grid[r][c] != 'v':
-                    dist_to_end = abs(r - end[0]) + abs(c - end[1]) * -1
-                    heapq.heappush(explore, dist_to_end)
+            if 0 <= r < len(costs) and 0 <= c < len(costs[r]):
+                if isinstance(costs[r][c], int) and costs[r][c] > costs[row][col] + 1: # replace cost if this path is cheaper
+                    costs[r][c] = costs[row][col] + 1
+                    heapq.heappush(explore, (r, c))
+                elif costs[r][c] == '_' or costs[r][c] == '*':
+                    costs[r][c] = costs[row][col] + 1
+                    heapq.heappush(explore, (r, c))
 
+    reversed_path = []
+    row, col = end[0], end[1]
+    while costs[row][col] != 0:
+        neighbors = {
+            'N': (row - 1, col),
+            'E': (row, col + 1),
+            'S': (row + 1, col),
+            'W': (row, col - 1)
+        }
+
+        for n in neighbors.keys():
+            r = neighbors[n][0]
+            c = neighbors[n][1]
+            if 0 <= r < len(costs) and 0 <= c < len(costs[r]):
+                if costs[r][c] == costs[row][col] - 1:
+                    row, col = r, c
+                    reversed_path.append(n)
+                    break
+
+    path = reverse_path(reversed_path)
+    total_cost = len(path)
+
+    return path, reversed_path, total_cost
 
 
 def ucs(cur, rows, cols, grid):
     dirty_cells = dirty_coords(grid)
+    costs = {}
+    paths = {}
 
-    # i = 0
-    # while i < len(dirty_cells):
-    #     j = i + 1
-    #     while j < len(dirty_cells):
-    #         cost = a_star(dirty_cells[i], dirty_cells[j], grid)
-    #         j += 1
-    #     i += 1
+    i = 0
+    while i < len(dirty_cells):
+        j = i + 1
+        while j < len(dirty_cells):
+            cost = start_to_end(dirty_cells[i], dirty_cells[j], grid)
+            costs[(dirty_cells[i], dirty_cells[j])] = cost[2]
+            costs[(dirty_cells[j], dirty_cells[i])] = cost[2]
+            paths[(dirty_cells[i], dirty_cells[j])] = cost[0]
+            paths[(dirty_cells[j], dirty_cells[i])] = cost[1]
+            j += 1
+        i += 1
+
+    print(costs)
+
+    # perms = list(permutations(dirty_cells))
     """
     find cost of going from one dirty cell to another
     find optimal path to clean all dirty cells 
@@ -145,5 +194,4 @@ if __name__ == "__main__":
 
         print(path)
     elif algorithm == "uniform-cost":
-        dirty = dirty_coords(grid)
-        print(dirty)
+        ucs(start, rows, cols, grid)

@@ -93,8 +93,8 @@ def reverse_path(path):
 
 
 def start_to_end(start, end, grid):
-    costs = copy.deepcopy(grid)
-    costs[start[0]][start[1]] = 0
+    costs = copy.deepcopy(grid) # make a copy of the grid to store costs of each cell
+    costs[start[0]][start[1]] = 0 # start cell cost is 0
     explore = [start]
     heapq.heapify(explore)
 
@@ -112,11 +112,11 @@ def start_to_end(start, end, grid):
         for n in neighbors.keys():
             r = neighbors[n][0]
             c = neighbors[n][1]
-            if 0 <= r < len(costs) and 0 <= c < len(costs[r]):
+            if 0 <= r < len(costs) and 0 <= c < len(costs[r]): # check if cell is in bounds
                 if isinstance(costs[r][c], int) and costs[r][c] > costs[row][col] + 1: # replace cost if this path is cheaper
                     costs[r][c] = costs[row][col] + 1
                     heapq.heappush(explore, (r, c))
-                elif costs[r][c] == '_' or costs[r][c] == '*':
+                elif costs[r][c] == '_' or costs[r][c] == '*' or costs[r][c] == '@': # check if cell is empty, dirty, or start
                     costs[r][c] = costs[row][col] + 1
                     heapq.heappush(explore, (r, c))
 
@@ -130,17 +130,29 @@ def start_to_end(start, end, grid):
             'W': (row, col - 1)
         }
 
-        for n in neighbors.keys():
+        no_path = False
+
+        for n in neighbors.keys(): # need a case where the surrounding cells are obstacles/dirty
             r = neighbors[n][0]
             c = neighbors[n][1]
             if 0 <= r < len(costs) and 0 <= c < len(costs[r]):
-                if costs[r][c] == costs[row][col] - 1:
+                if isinstance(costs[r][c], int) and costs[r][c] == costs[row][col] - 1:
                     row, col = r, c
                     reversed_path.append(n)
                     break
+                elif n == 'W':
+                    no_path = True
+            elif n == 'W':
+                no_path = True
+        
+        if no_path:
+            break
 
     path = reverse_path(reversed_path)
     total_cost = len(path)
+
+    if total_cost == 0: # this means that the cell is unreachable
+        total_cost = float('inf')
 
     return path, reversed_path, total_cost
 
@@ -171,9 +183,17 @@ def ucs(cur, rows, cols, grid):
             j += 1
         i += 1
 
-    dirty = list(named_cells.values())
-    dirty.remove('A')
-    perms = list(permutations(dirty))
+    reachable = ['A']
+    for cell in costs['A'].keys():
+        if costs['A'][cell] != float('inf'):
+            reachable.append(cell)
+
+    reachable.remove('A')
+    if len(reachable) == 0:
+        print("No reachable dirty cells")
+        return []
+    
+    perms = list(permutations(reachable))
 
     min_cost = float('inf')
     min_path = []
@@ -214,7 +234,7 @@ if __name__ == "__main__":
     # world_file = sys.argv[2]
 
     algorithm = "uniform-cost"
-    world_file = "test1.txt"
+    world_file = "test4.txt"
 
     rows, cols, grid = read_file(world_file)
     start = find_start(grid)
@@ -228,3 +248,6 @@ if __name__ == "__main__":
         print(path)
     elif algorithm == "uniform-cost":
         ucs(start, rows, cols, grid)
+        # dirty_cells = dirty_coords(grid)
+        # path = start_to_end(start, dirty_cells[2], grid)
+        # print(path)

@@ -2,6 +2,8 @@ import sys
 import copy
 import heapq
 from itertools import permutations
+from collections import defaultdict
+import json
 
 
 def read_file(file):
@@ -145,24 +147,55 @@ def start_to_end(start, end, grid):
 
 def ucs(cur, rows, cols, grid):
     dirty_cells = dirty_coords(grid)
-    costs = {}
-    paths = {}
+    dirty_cells.insert(0, cur) # start cell will be labeled as A
+    named_cells = {}
+    
+    for i in range(len(dirty_cells)):
+        named_cells[dirty_cells[i]] = f"{chr(65 + i)}"
+
+    costs = defaultdict(lambda: defaultdict(int))
+    paths = defaultdict(lambda: defaultdict(int))
 
     i = 0
     while i < len(dirty_cells):
         j = i + 1
         while j < len(dirty_cells):
             cost = start_to_end(dirty_cells[i], dirty_cells[j], grid)
-            costs[(dirty_cells[i], dirty_cells[j])] = cost[2]
-            costs[(dirty_cells[j], dirty_cells[i])] = cost[2]
-            paths[(dirty_cells[i], dirty_cells[j])] = cost[0]
-            paths[(dirty_cells[j], dirty_cells[i])] = cost[1]
+            cell_i = named_cells[dirty_cells[i]]
+            cell_j = named_cells[dirty_cells[j]]
+
+            costs[cell_i][cell_j] = cost[2]
+            costs[cell_j][cell_i] = cost[2]
+            paths[cell_i][cell_j] = cost[0]
+            paths[cell_j][cell_i] = cost[1]
             j += 1
         i += 1
 
-    print(costs)
+    dirty = list(named_cells.values())
+    dirty.remove('A')
+    perms = list(permutations(dirty))
 
-    # perms = list(permutations(dirty_cells))
+    min_cost = float('inf')
+    min_path = []
+    for perm in perms:
+        cost = 0
+        path = []
+        for i in range(len(perm) - 1):
+            # print(perm[i], perm[i + 1])
+            # print(costs[perm[i]][perm[i + 1]])
+            cost += costs[perm[i]][perm[i + 1]]
+            path += paths[perm[i]][perm[i + 1]]
+
+        cost += costs['A'][perm[0]] # add cost from start to first dirty cell
+        path = paths['A'][perm[0]] + path # add path from start to first dirty cell
+
+        if cost < min_cost:
+            min_cost = cost
+            min_path = path
+
+    print(min_cost)
+    print(min_path)
+
     """
     find cost of going from one dirty cell to another
     find optimal path to clean all dirty cells 

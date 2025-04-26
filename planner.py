@@ -24,9 +24,10 @@ def find_start(grid):
                 return r, c
             
 
-def dfs(cur, rows, cols, grid, path=[]):
+def dfs(cur, rows, cols, grid, path=[], open_count=[0], closed_count=[0]):
     row, col = cur[0], cur[1]
     part_of_path = False
+    open_count[0] += 1
 
     if grid[row][col] == '*':
         path.append("V")
@@ -47,7 +48,7 @@ def dfs(cur, rows, cols, grid, path=[]):
         if 0 <= r < rows and 0 <= c < cols:
             if grid[r][c] != '#' and grid[r][c] != 'v':
                 path.append(n)
-                part = dfs(neighbors[n], rows, cols, grid, path)
+                part = dfs(neighbors[n], rows, cols, grid, path, open_count, closed_count)
                 if part:
                     part_of_path = True
                     match n: # backtracking
@@ -61,6 +62,8 @@ def dfs(cur, rows, cols, grid, path=[]):
                             path.append('E')
                 else:
                     path.pop()
+
+    closed_count[0] += 1
 
     return part_of_path
 
@@ -91,7 +94,7 @@ def reverse_path(path):
     return reversed_path
 
 
-def start_to_end(start, end, grid):
+def start_to_end(start, end, grid, open_count=[0], closed_count=[0]):
     costs = copy.deepcopy(grid) # make a copy of the grid to store costs of each cell
     costs[start[0]][start[1]] = 0 # start cell cost is 0
     explore = [start]
@@ -99,6 +102,7 @@ def start_to_end(start, end, grid):
 
     while len(explore) > 0:
         cur = heapq.heappop(explore)
+        closed_count[0] += 1
         row, col = cur[0], cur[1]
 
         neighbors = {
@@ -115,9 +119,11 @@ def start_to_end(start, end, grid):
                 if isinstance(costs[r][c], int) and costs[r][c] > costs[row][col] + 1: # replace cost if this path is cheaper
                     costs[r][c] = costs[row][col] + 1
                     heapq.heappush(explore, (r, c))
+                    open_count[0] += 1
                 elif costs[r][c] == '_' or costs[r][c] == '*' or costs[r][c] == '@': # check if cell is empty, dirty, or start
                     costs[r][c] = costs[row][col] + 1
                     heapq.heappush(explore, (r, c))
+                    open_count[0] += 1
 
     reversed_path = []
     row, col = end[0], end[1]
@@ -167,11 +173,15 @@ def ucs(cur, grid):
     costs = defaultdict(lambda: defaultdict(int))
     paths = defaultdict(lambda: defaultdict(int))
 
+    total_open = 0
+    total_closed = 0
     i = 0
     while i < len(dirty_cells):
         j = i + 1
         while j < len(dirty_cells):
-            cost = start_to_end(dirty_cells[i], dirty_cells[j], grid)
+            open_count = [0]
+            closed_count = [0]
+            cost = start_to_end(dirty_cells[i], dirty_cells[j], grid, open_count, closed_count)
             cell_i = named_cells[dirty_cells[i]]
             cell_j = named_cells[dirty_cells[j]]
 
@@ -179,6 +189,9 @@ def ucs(cur, grid):
             costs[cell_j][cell_i] = cost[2]
             paths[cell_i][cell_j] = cost[0]
             paths[cell_j][cell_i] = cost[1]
+
+            total_open += open_count[0]
+            total_closed += closed_count[0]
             j += 1
         i += 1
 
@@ -211,32 +224,37 @@ def ucs(cur, grid):
             min_cost = cost
             min_path = path
 
-    return min_path
+    return min_path, total_open, total_closed
 
 
 if __name__ == "__main__":
-    # if len(sys.argv) != 3:
-    #     print("Usage: python3 planner.py <algorithm> <world-file>")
-    #     # python3 planner.py depth-first example.txt
-    #     # python3 planner.py uniform-cost example.txt
-    #     sys.exit(1)
+    if len(sys.argv) != 3:
+        print("Usage: python3 planner.py <algorithm> <world-file>")
+        sys.exit(1)
     
-    # algorithm = sys.argv[1]
-    # world_file = sys.argv[2]
-
-    algorithm = "depth-first"
-    world_file = "test1.txt"
+    algorithm = sys.argv[1]
+    world_file = sys.argv[2]
 
     rows, cols, grid = read_file(world_file)
     start = find_start(grid)
 
     if algorithm == "depth-first":
         path = []
-        dfs(start, rows, cols, grid, path)
-        while path[len(path) - 1] != "V":
-            path.pop()
+        open_count = [0]
+        closed_count = [0]
+        dfs(start, rows, cols, grid, path, open_count, closed_count)
+        if len(path) > 0:
+            while path[len(path) - 1] != "V":
+                path.pop()
 
-        print(path)
+        for i in path:
+            print(i)
+        print(f"{open_count[0]} nodes generated")
+        print(f"{closed_count[0]} nodes expanded")
     elif algorithm == "uniform-cost":
-        path = ucs(start, grid)
-        print(path)
+        path, open, closed = ucs(start, grid)
+
+        for i in path:
+            print(i)
+        print(f"{open} nodes generated")
+        print(f"{closed} nodes expanded")

@@ -3,7 +3,6 @@ import copy
 import heapq
 from itertools import permutations
 from collections import defaultdict
-import json
 
 
 def read_file(file):
@@ -157,7 +156,7 @@ def start_to_end(start, end, grid):
     return path, reversed_path, total_cost
 
 
-def ucs(cur, rows, cols, grid):
+def ucs(cur, grid):
     dirty_cells = dirty_coords(grid)
     dirty_cells.insert(0, cur) # start cell will be labeled as A
     named_cells = {}
@@ -201,26 +200,18 @@ def ucs(cur, rows, cols, grid):
         cost = 0
         path = []
         for i in range(len(perm) - 1):
-            # print(perm[i], perm[i + 1])
-            # print(costs[perm[i]][perm[i + 1]])
             cost += costs[perm[i]][perm[i + 1]]
             path += paths[perm[i]][perm[i + 1]]
+            path += ['V'] # add 'V' to path after each dirty cell
 
         cost += costs['A'][perm[0]] # add cost from start to first dirty cell
-        path = paths['A'][perm[0]] + path # add path from start to first dirty cell
+        path = paths['A'][perm[0]] + ['V'] + path # add path from start to first dirty cell
 
         if cost < min_cost:
             min_cost = cost
             min_path = path
 
-    print(min_cost)
-    print(min_path)
-
-    """
-    find cost of going from one dirty cell to another
-    find optimal path to clean all dirty cells 
-    using all possible combinations of dirty cells and start
-    """
+    return min_path
 
 
 if __name__ == "__main__":
@@ -233,21 +224,19 @@ if __name__ == "__main__":
     # algorithm = sys.argv[1]
     # world_file = sys.argv[2]
 
-    algorithm = "uniform-cost"
-    world_file = "test4.txt"
+    algorithm = "depth-first"
+    world_file = "test1.txt"
 
     rows, cols, grid = read_file(world_file)
     start = find_start(grid)
-    path = []
 
     if algorithm == "depth-first":
+        path = []
         dfs(start, rows, cols, grid, path)
         while path[len(path) - 1] != "V":
             path.pop()
 
         print(path)
     elif algorithm == "uniform-cost":
-        ucs(start, rows, cols, grid)
-        # dirty_cells = dirty_coords(grid)
-        # path = start_to_end(start, dirty_cells[2], grid)
-        # print(path)
+        path = ucs(start, grid)
+        print(path)
